@@ -1,0 +1,352 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<base target="_top">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#12324f">
+<title>eDoc 감독</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<style>
+:root{--navy:#12324f;--acc:#1f5fa8;--acc2:#e8f0fa;--ink:#1c222b;--mute:#667085;--line:#dde1e6;--bg:#f3f4f6;--ok:#1e7b43;--okb:#e5f4ea;--warn:#8a5a00;--warnb:#fff3d1;--bad:#b42318;--badb:#fde7e6;--or:#e8590c}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 "Malgun Gothic","Apple SD Gothic Neo","Segoe UI",sans-serif}
+header{background:var(--navy);color:#fff;padding:12px 16px;display:flex;align-items:center;gap:8px;position:sticky;top:0;z-index:5}
+header h1{font-size:17px;margin:0;flex:1}
+header button{background:transparent;border:1px solid #4d6f92;color:#dbe7f5;border-radius:4px;padding:4px 10px;font:inherit;font-size:13px}
+main{max-width:760px;margin:0 auto;padding:14px 14px 60px}
+.card{background:#fff;border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin-bottom:12px}
+.card h2{font-size:16px;margin:0 0 8px}
+.card h3{font-size:14px;margin:14px 0 6px;color:var(--navy)}
+.muted{color:var(--mute);font-size:13px}
+.btn{font:inherit;border:1px solid var(--acc);background:var(--acc);color:#fff;border-radius:6px;padding:9px 14px;cursor:pointer}
+.btn.g{background:#fff;color:var(--acc)}
+.btn.ok{background:var(--ok);border-color:var(--ok)}
+.btn.warn{background:#c77700;border-color:#c77700}
+.btn.bad{background:var(--bad);border-color:var(--bad)}
+.btn.s{padding:4px 10px;font-size:13px}
+input[type=text],input[type=email],textarea{font:inherit;width:100%;padding:9px 10px;border:1px solid var(--line);border-radius:6px}
+textarea{min-height:70px}
+.tabs{display:flex;gap:6px;overflow-x:auto;margin:0 0 10px;padding-bottom:2px}
+.tabs button{font:inherit;font-size:14px;border:1px solid var(--line);background:#fff;border-radius:18px;padding:5px 12px;white-space:nowrap}
+.tabs button.on{background:var(--navy);color:#fff;border-color:var(--navy)}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px}
+.stat{background:#fff;border:1px solid var(--line);border-radius:10px;padding:10px;text-align:center}
+.stat b{display:block;font-size:22px;color:var(--navy)}
+.stat.hot b{color:var(--or)}
+.stat span{font-size:12px;color:var(--mute)}
+.job{background:#fff;border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin-bottom:8px;cursor:pointer;display:block;color:inherit;text-decoration:none}
+.job.need{border-left:5px solid var(--or)}
+.top{display:flex;gap:6px;align-items:center;flex-wrap:wrap;font-size:13px}
+.job .t{font-weight:700;margin:4px 0 2px}
+.ship{background:var(--navy);color:#fff;border-radius:4px;padding:0 6px;font-size:12px;font-weight:700}
+.type{background:var(--acc2);color:#123f73;border-radius:4px;padding:0 6px;font-size:12px}
+.pill{display:inline-block;padding:0 8px;border-radius:10px;font-size:12px;border:1px solid var(--line);background:#fff;white-space:nowrap}
+.pill.ok{background:var(--okb);border-color:#a8d5b6;color:var(--ok)}
+.pill.warn{background:var(--warnb);border-color:#ecd28c;color:var(--warn)}
+.pill.bad{background:var(--badb);border-color:#f1b0aa;color:var(--bad)}
+.pill.acc{background:var(--acc2);border-color:#b8cfee;color:#123f73}
+.kv{display:grid;grid-template-columns:92px 1fr;gap:4px 10px;font-size:14px}
+.kv div:nth-child(odd){color:var(--mute)}
+.decide{border:2px solid var(--or);background:#fffaf6}
+.decide .reasons{background:#fff;border:1px solid #f0c9ad;border-radius:6px;padding:8px 10px;font-size:14px;margin:6px 0}
+.rowb{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px}
+.rowb .btn{padding:12px 6px;font-weight:700}
+.result{border-radius:8px;padding:10px 12px;font-size:14px;background:var(--okb);border:1px solid #a8d5b6}
+.result.warn{background:var(--warnb);border-color:#ecd28c}
+.result.bad{background:var(--badb);border-color:#f1b0aa}
+.lv{display:inline-block;min-width:20px;text-align:center;border-radius:3px;font-weight:700;font-size:12px;padding:0 4px}
+.lv.L{background:#57b65f;color:#fff}.lv.M{background:#f2c230}.lv.H{background:#ef7d3c;color:#fff}.lv.S{background:#d62f3a;color:#fff}
+.ra{border-top:1px solid #eef0f3;padding:7px 0;font-size:13.5px}
+.ra .h{font-weight:600}
+.note{border-radius:6px;padding:8px 10px;font-size:13.5px;margin:6px 0}
+.note.warn{background:var(--warnb);border:1px solid #ecd28c}
+.note.info{background:var(--acc2);border:1px solid #b8cfee}
+.ck{display:flex;gap:8px;align-items:center;margin:6px 0}
+table.a{border-collapse:collapse;width:100%;font-size:13.5px}
+table.a td,table.a th{border-bottom:1px solid #eef0f3;padding:6px 4px;text-align:left;vertical-align:top}
+.msg{border-radius:10px;padding:8px 11px;margin:6px 0;max-width:88%;font-size:14px;white-space:pre-wrap}
+.msg.s{background:#eef1f5}
+.msg.o{background:var(--acc2);margin-left:auto}
+.msg .w{font-size:12px;color:var(--mute);display:block}
+#busy{position:fixed;inset:0;background:rgba(255,255,255,.55);display:none;align-items:center;justify-content:center;z-index:20;font-weight:700;color:var(--navy)}
+#toast{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);background:#1c222b;color:#fff;padding:9px 16px;border-radius:20px;font-size:14px;display:none;z-index:30}
+#form{position:fixed;inset:0;background:#fff;z-index:40;display:none;overflow:auto}
+#form .bar{position:sticky;top:0;background:var(--navy);color:#fff;padding:10px 14px;display:flex;gap:8px;align-items:center}
+#form .bar b{flex:1}
+#form .body{padding:12px;overflow-x:auto}
+#form .body .pt{border-collapse:collapse;width:100%;font-size:11px}
+#form .body .pt th,#form .body .pt td{border:1px solid #000;padding:2px 4px;vertical-align:top;text-align:left}
+#form .body .pt th{background:#eee}
+#form .body .ph{text-align:center;font-size:15px;font-weight:700;margin:0 0 6px}
+#form .body .ps{font-weight:700;margin:8px 0 3px}
+#form .body .pn{font-size:10px;font-style:italic}
+#form .body .pf{display:flex;justify-content:space-between;font-size:10px;color:#444;margin:6px 0 20px}
+#form .body .red{color:#b00}
+@media print{body>*:not(#form){display:none!important}#form{position:static;display:block!important}#form .bar{display:none}#form .body{padding:0}.pg{break-after:page}}
+@media (max-width:480px){.stats{grid-template-columns:repeat(2,1fr)}.kv{grid-template-columns:80px 1fr}}
+</style>
+</head>
+<body>
+<header><h1>eDoc 감독</h1><button id="btnHome" onclick="go('list')" style="display:none">목록</button><button id="btnAdmin" onclick="go('admin')" style="display:none">설정</button></header>
+<main id="app"><div class="card">여는 중...</div></main>
+<div id="busy">처리 중...</div>
+<div id="toast"></div>
+<div id="form"><div class="bar"><b id="formTitle">서식</b><button class="btn s g" onclick="window.print()">인쇄</button><button class="btn s g" onclick="closeForm()">닫기</button></div><div class="body" id="formBody"></div></div>
+<script>
+"use strict";
+var EXEC_URL = "https://script.google.com/macros/s/AKfycbykDP_KT0SOpUelOJ1C8HDQwaHE1khNYTNSdGWIo16ukcEz_Wp8qNQNEaQUX48_rFnd/exec";
+var ST = { s: null, me: null, list: [], tab: 'need', ship: '', type: '', cur: null, admin: null, params: {} };
+var LVN = { L: 'Low', M: 'Medium', H: 'High', S: 'Severe' };
+
+/* 서식 팩 : 폴라리스쉬핑 - 감독 화면의 문서 종류별 버튼과 본문 */
+/* 문서 종류별 화면 - 서버 TYPES 와 짝. 새 종류는 여기에 결정 버튼과 본문 그리기를 더한다 */
+var TYPE_UI = {
+  PTW: {
+    buttons: [{ k: 'agreed', label: 'Agreed', cls: 'ok' }, { k: 'cond', label: '조건부', cls: 'warn', ask: '조건 (본선 14-02, 24-06 의 Condition 칸에 들어갑니다)' }, { k: 'not', label: 'Not Agreed', cls: 'bad', ask: '동의하지 않는 이유 (본선에 전달됩니다)' }],
+    resultCls: { agreed: '', cond: 'warn', not: 'bad' },
+    decideTitle: '감독 동의 <span class="muted">14-02 & 24-06</span>',
+    body: renderPTW
+  }
+};
+
+function renderPTW(r, d, part) {
+  var s = d._sum || {}, pr = d._print || {};
+  if (part === 'head') return '<div class="kv"><div>작업일</div><div>' + esc(d.workDate) + ' ' + esc(d.start || '') + ' ~ ' + esc(d.end || '') + '</div><div>장소</div><div>' + esc(s.location) + '</div><div>종류</div><div>' + esc((s.types || []).join(', ')) + '</div><div>CP</div><div>' + esc(d.cp) + '</div><div>작업자</div><div>' + esc((d.workers || []).join(', ')) + '</div><div>장비</div><div>' + esc(d.tools) + '</div><div>상태</div><div>' + esc(s.status) + (s.late ? ' <span class="pill bad">사후 작성</span>' : '') + (s.verbal ? '<br><span class="muted">구두 동의 ' + esc(s.verbal) + '</span>' : '') + '</div></div>';
+  var h = '', fb = [];
+  if (pr.hrwp) fb.push('<button class="btn s g" onclick="showForm(\'hrwp\')">14-02 서식</button>');
+  if (pr.ra) fb.push('<button class="btn s g" onclick="showForm(\'ra\')">24-06 서식</button>');
+  if (pr.ptw) fb.push('<button class="btn s g" onclick="showForm(\'ptw\')">작업허가서 서식</button>');
+  if (fb.length) h += '<div class="card"><h2>서식으로 보기</h2><p class="muted">본선이 보낸 시점의 모양입니다. 감독 결정 칸은 본선에 반영된 뒤 본선 인쇄본에 들어갑니다.</p>' + fb.join(' ') + '</div>';
+  var nl = s.nonLow || [];
+  h += '<div class="card"><h2>리스크평가</h2><div class="muted">' + esc(s.raTasks || '') + ' | 적용 ' + (s.raCount || 0) + '줄 | ' + (s.raDone ? 'RA 승인 ' + esc(hm(s.raDone)) : '<span style="color:#b42318">RA 승인 전</span>') + '</div>' +
+    '<h3>잔존 리스크가 Low 가 아닌 줄 (' + nl.length + ')</h3>' + (nl.length ? nl.map(raRow).join('') : '<div class="muted">없음</div>') +
+    '<div style="margin-top:8px"><button class="btn s g" onclick="var x=$(\'raall\');x.style.display=x.style.display===\'none\'?\'block\':\'none\'">전체 줄 보기</button></div><div id="raall" style="display:none">' + (s.ra || []).map(raRow).join('') + '</div>' +
+    '<h3>Safety Comment</h3><div style="font-size:14px">' + ((s.comments || []).map(function (c) { return '- ' + esc(c); }).join('<br>') || '-') + '</div></div>';
+  var ps = s.permits || [];
+  if (ps.length) h += '<div class="card"><h2>작업허가서</h2>' + ps.map(function (p) {
+    var st = p.paper ? (p.closed ? '종이 서식 종결' : '종이 서식') : p.closed ? (p.res || '종결') : p.expired ? '유효시간 지남' : p.issued ? '발급' : '발급 전';
+    return '<div class="ra"><div class="h">' + esc(p.form) + ' ' + esc(p.type) + ' <span class="pill' + (p.closed ? ' ok' : p.expired ? ' bad' : '') + '">' + esc(st) + '</span>' + (p.late ? ' <span class="pill bad">사후 기록</span>' : '') + '</div>' +
+      (p.from ? '<div class="muted">유효 ' + esc(hm(p.from)) + ' ~ ' + esc(hm(p.to)) + '</div>' : '') + (p.fb ? '<div class="note info"><b>Safety Feedback</b><br>' + esc(p.fb) + '</div>' : '') + '</div>';
+  }).join('') + '</div>';
+  return h;
+}
+
+var PRINT_TITLES = { hrwp: '14-02 High Risk Work Plan', ra: '24-06 Risk Assessment', ptw: '작업허가서' };
+
+
+function $(id) { return document.getElementById(id); }
+function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+function lv(x) { return x ? '<span class="lv ' + x + '">' + (LVN[x] || x) + '</span>' : ''; }
+function toast(m) { var t = $('toast'); t.textContent = m; t.style.display = 'block'; setTimeout(function () { t.style.display = 'none'; }, 2600); }
+function busy(on) { $('busy').style.display = on ? 'flex' : 'none'; }
+function store(k, v) { try { if (v == null) localStorage.removeItem(k); else localStorage.setItem(k, v); } catch (e) { } }
+function load(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+function hm(s) { return String(s || '').replace('T', ' ').slice(0, 16); }
+function today() { var d = new Date(); return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); }
+function dday(dl) {
+  if (!dl) return '';
+  var n = Math.round((new Date(dl + 'T00:00') - new Date(today() + 'T00:00')) / 86400000);
+  return n > 0 ? 'D-' + n : n === 0 ? '오늘' : (-n) + '일 지남';
+}
+function needDecision(o) { return !!o.requested && !o.result; }
+function ui(type) { return TYPE_UI[type] || { buttons: [], resultCls: {}, decideTitle: '결정', body: renderGeneric }; }
+
+/* 서버와 주고받기 : 이 웹 앱에서 열면 google.script.run, 그 밖(GitHub Pages)에서는 fetch */
+function api(op, data, ok, fail) {
+  var req = Object.assign({ op: op }, data || {});
+  if (ST.s && op !== 'o.login' && op !== 'o.complete') req.s = ST.s;
+  busy(true);
+  var done = function (o) {
+    busy(false);
+    if (o && o.ok) { ok && ok(o.data); return; }
+    var m = (o && o.err) || '오류';
+    if (m === 'LOGIN') { ST.s = null; store('edoc_s', null); showLogin('다시 등록이 필요합니다.'); return; }
+    if (fail) fail(m); else toast(m);
+  };
+  if (window.google && google.script && google.script.run) {
+    google.script.run.withSuccessHandler(done).withFailureHandler(function (e) { done({ ok: false, err: String(e && e.message || e) }); }).apiCall(req);
+  } else {
+    fetch(EXEC_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(req), redirect: 'follow' })
+      .then(function (r) { return r.json(); }).then(done)
+      .catch(function () { done({ ok: false, err: '인터넷 연결을 확인하십시오.' }); });
+  }
+}
+
+/* ---------- 등록 ---------- */
+function showLogin(msg) {
+  $('btnHome').style.display = 'none'; $('btnAdmin').style.display = 'none';
+  $('app').innerHTML = '<div class="card"><h2>이 기기 등록</h2>' + (msg ? '<div class="note warn">' + esc(msg) + '</div>' : '') +
+    '<p class="muted">승인자 명단에 있는 메일 주소를 적으십시오. 그 주소로 확인 링크가 갑니다. 링크를 누르면 이 기기가 30일 동안 등록됩니다.</p>' +
+    '<input type="email" id="em" placeholder="예: name@company.com" autocomplete="email"><div style="margin-top:10px"><button class="btn" onclick="reqLink()">확인 링크 받기</button></div></div>';
+}
+function reqLink() {
+  var em = $('em').value.trim();
+  if (!em) return;
+  api('o.login', { email: em }, function () {
+    $('app').innerHTML = '<div class="card"><h2>메일을 확인하십시오</h2><p>' + esc(em) + ' 로 확인 링크를 보냈습니다. 명단에 있는 주소일 때만 메일이 갑니다.</p><p class="muted">메일의 「이 기기 등록」 버튼을 이 기기에서 누르십시오. 15분 안에 한 번만 쓸 수 있습니다. 메일이 오지 않으면 주소 철자와 스팸함을 확인하십시오.</p><button class="btn g" onclick="showLogin()">다시 적기</button></div>';
+  });
+}
+function deviceName() { var u = navigator.userAgent; return (/iPhone|iPad/.test(u) ? 'iPhone/iPad' : /Android/.test(u) ? 'Android' : /Windows/.test(u) ? 'Windows PC' : /Mac/.test(u) ? 'Mac' : '기기') + ' ' + today(); }
+
+/* ---------- 목록 ---------- */
+function go(v) { if (v === 'list') loadList(); else if (v === 'admin') loadAdmin(); }
+function loadList() { api('o.list', {}, function (list) { ST.list = list || []; renderList(); }); }
+function renderList() {
+  $('btnHome').style.display = 'none'; $('btnAdmin').style.display = ST.me && ST.me.admin ? '' : 'none';
+  var L = ST.list, ships = [], types = [];
+  L.forEach(function (o) { if (ships.indexOf(o.ship) < 0) ships.push(o.ship); if (types.indexOf(o.type) < 0) types.push(o.type); });
+  ships.sort();
+  var cnt = { need: L.filter(needDecision).length, msg: L.filter(function (o) { return o.msgs > 0; }).length, late: L.filter(function (o) { return o.late; }).length, all: L.length };
+  var tabs = [['need', '결정 대기'], ['all', '전체'], ['msg', '의견 있음'], ['late', '사후 작성'], ['closed', '종결']];
+  var f = L.filter(function (o) {
+    if (ST.ship && o.ship !== ST.ship) return false;
+    if (ST.type && o.type !== ST.type) return false;
+    if (ST.tab === 'need') return needDecision(o);
+    if (ST.tab === 'msg') return o.msgs > 0;
+    if (ST.tab === 'late') return o.late;
+    if (ST.tab === 'closed') return o.status === '종결';
+    return true;
+  });
+  if (ST.tab === 'need') f.sort(function (a, b) { return (a.deadline || a.date).localeCompare(b.deadline || b.date); });
+  var h = '<div class="stats"><div class="stat' + (cnt.need ? ' hot' : '') + '"><b>' + cnt.need + '</b><span>결정 대기</span></div><div class="stat"><b>' + cnt.msg + '</b><span>의견 있음</span></div><div class="stat"><b>' + cnt.late + '</b><span>사후 작성</span></div><div class="stat"><b>' + cnt.all + '</b><span>전체</span></div></div>';
+  h += '<div class="tabs">' + tabs.map(function (t) { return '<button class="' + (ST.tab === t[0] ? 'on' : '') + '" onclick="ST.tab=\'' + t[0] + '\';renderList()">' + t[1] + '</button>'; }).join('') + '</div>';
+  h += '<div class="tabs"><button class="' + (!ST.ship ? 'on' : '') + '" onclick="ST.ship=\'\';renderList()">전 선박</button>' + ships.map(function (s) { return '<button class="' + (ST.ship === s ? 'on' : '') + '" onclick="ST.ship=\'' + esc(s) + '\';renderList()">' + esc(s) + '</button>'; }).join('') + '</div>';
+  if (types.length > 1) h += '<div class="tabs"><button class="' + (!ST.type ? 'on' : '') + '" onclick="ST.type=\'\';renderList()">전 종류</button>' + types.map(function (s) { return '<button class="' + (ST.type === s ? 'on' : '') + '" onclick="ST.type=\'' + esc(s) + '\';renderList()">' + esc(typeName(s)) + '</button>'; }).join('') + '</div>';
+  if (!f.length) h += '<div class="card muted">해당하는 문서가 없습니다.</div>';
+  f.forEach(function (o) {
+    var p = [], U = ui(o.type);
+    if (needDecision(o)) p.push('<span class="pill warn">결정 대기 ' + esc(dday(o.deadline)) + '</span>');
+    if (o.result) p.push('<span class="pill ' + ((U.resultCls[o.result] || '') === 'bad' ? 'bad' : (U.resultCls[o.result] || '') === 'warn' ? 'warn' : 'ok') + '">' + esc(o.resultText) + '</span>');
+    if (o.status && !needDecision(o)) p.push('<span class="pill' + (o.status === '종결' ? ' ok' : o.status === '유효시간 지남' ? ' bad' : '') + '">' + esc(o.status) + '</span>');
+    if (o.late) p.push('<span class="pill bad">사후 작성</span>');
+    if (o.msgs) p.push('<span class="pill acc">의견 ' + o.msgs + '</span>');
+    if (o.gp) p.push('<span class="pill ok">Good Practice</span>');
+    h += '<a class="job' + (needDecision(o) ? ' need' : '') + '" onclick="openDoc(\'' + esc(o.id) + '\')"><div class="top"><span class="ship">' + esc(o.ship) + '</span><span class="type">' + esc(o.typeName) + '</span><span class="muted">' + esc(o.date) + '</span></div><div class="t">' + esc(o.title || '(제목 없음)') + '</div><div class="top" style="margin-top:6px">' + p.join(' ') + '</div></a>';
+  });
+  h += '<div style="text-align:center;margin-top:14px"><button class="btn s g" onclick="loadList()">새로 고침</button> <button class="btn s g" onclick="logout()">이 기기 등록 해제</button></div>';
+  $('app').innerHTML = h;
+}
+function typeName(t) { return (ST.me && ST.me.types && ST.me.types[t] && ST.me.types[t].name) || t; }
+
+/* ---------- 문서 ---------- */
+function openDoc(id) { api('o.get', { id: id }, function (x) { ST.cur = x; renderDoc(); window.scrollTo(0, 0); }); }
+function renderDoc() {
+  $('btnHome').style.display = ''; $('btnAdmin').style.display = 'none';
+  var r = ST.cur.row, d = ST.cur.body || {}, U = ui(r.type);
+  var h = '<div class="card"><div class="top"><span class="ship">' + esc(r.ship) + '</span><span class="type">' + esc(r.typeName) + '</span><span class="muted">' + esc(d.shipName || '') + '</span></div><h2 style="margin:6px 0">' + esc(r.title || '(제목 없음)') + '</h2>' + U.body(r, d, 'head') + '</div>';
+  if (r.requested || r.result || r.reasons) {
+    h += '<div class="card decide"><h2>' + U.decideTitle + '</h2>' + (r.reasons ? '<div class="reasons">' + esc(r.reasons).replace(/\n/g, '<br>') + '</div>' : '') +
+      '<div class="muted">' + (r.deadline ? '기한 ' + esc(r.deadline) + ' (' + esc(dday(r.deadline)) + ') | ' : '') + '요청 ' + esc(r.requested || '-') + '</div>';
+    if (r.result) h += '<div class="result ' + (U.resultCls[r.result] || '') + '" style="margin-top:10px"><b>' + esc(r.resultText) + '</b> - ' + esc(r.by) + ' ' + esc(hm(r.at)) + (r.text ? '<br>' + esc(r.text) : '') + '</div><div style="margin-top:8px"><button class="btn s g" onclick="$(\'dec\').style.display=\'block\';this.style.display=\'none\'">결정 바꾸기</button></div><div id="dec" style="display:none">' + decideBox(U) + '</div>';
+    else h += decideBox(U);
+    h += '</div>';
+  }
+  h += U.body(r, d, 'body');
+  h += '<div class="card"><h2>의견 주고받기</h2>' + (ST.cur.msgs.length ? ST.cur.msgs.map(function (m) { return '<div class="msg ' + (m.side === '감독' ? 'o' : 's') + '"><span class="w">' + esc(m.side) + ' ' + esc(m.who) + ' ' + esc(hm(m.at)) + '</span>' + esc(m.text) + '</div>'; }).join('') : '<div class="muted">아직 없습니다.</div>') +
+    '<textarea id="cmt" placeholder="본선에 보낼 의견 - 본선 작업 화면에 나옵니다" style="margin-top:8px"></textarea><div style="margin-top:8px"><button class="btn" onclick="sendCmt()">의견 보내기</button></div></div>';
+  h += '<div class="card"><h2>검토</h2><label class="ck"><input type="checkbox" id="gp"' + (r.gp ? ' checked' : '') + '> Good Practice</label>' +
+    '<textarea id="remark" placeholder="검토 의견 - 대장에 남고 본선 화면 맨 위에 보입니다">' + esc(r.remark) + '</textarea>' +
+    (r.reviewAt ? '<div class="muted">' + esc(r.reviewBy) + ' ' + esc(hm(r.reviewAt)) + '</div>' : '') +
+    '<div style="margin-top:8px"><button class="btn" onclick="saveReview()">검토 저장</button></div></div>';
+  $('app').innerHTML = h;
+}
+function decideBox(U) {
+  return '<div class="rowb">' + U.buttons.map(function (b) { return '<button class="btn ' + b.cls + '" onclick="pick(\'' + b.k + '\')">' + esc(b.label) + '</button>'; }).join('') + '</div>' +
+    '<div id="askBox" style="display:none;margin-top:10px"><div id="askLabel" class="muted"></div><textarea id="ask"></textarea><div style="margin-top:8px"><button class="btn" id="askGo">보내기</button> <button class="btn g" onclick="$(\'askBox\').style.display=\'none\'">취소</button></div></div>';
+}
+function pick(k) {
+  var U = ui(ST.cur.row.type), b = U.buttons.filter(function (x) { return x.k === k; })[0];
+  if (!b.ask) { decide(k, ''); return; }
+  $('askBox').style.display = 'block'; $('askLabel').textContent = b.ask;
+  $('askGo').onclick = function () { decide(k, $('ask').value.trim()); };
+  $('ask').focus();
+}
+function decide(k, text) {
+  var U = ui(ST.cur.row.type), b = U.buttons.filter(function (x) { return x.k === k; })[0];
+  if (b.ask && !text) { toast('내용을 적으십시오'); return; }
+  if (!confirm(b.label + ' 로 회신합니다. 본선에 바로 전달됩니다.')) return;
+  api('o.decide', { id: ST.cur.row.id, result: k, text: text }, function (row) { ST.cur.row = row; toast(b.label + ' 저장'); renderDoc(); });
+}
+function saveReview() { api('o.review', { id: ST.cur.row.id, gp: $('gp').checked, remark: $('remark').value }, function (row) { ST.cur.row = row; toast('검토 저장'); renderDoc(); }); }
+function sendCmt() {
+  var t = $('cmt').value.trim();
+  if (!t) return;
+  api('o.comment', { id: ST.cur.row.id, text: t }, function (x) { ST.cur = x; toast('의견 보냄'); renderDoc(); });
+}
+function showForm(k) {
+  var pr = (ST.cur.body || {})._print || {};
+  $('formTitle').textContent = (PRINT_TITLES[k]) || '서식';
+  $('formBody').innerHTML = pr[k] || '';
+  $('form').style.display = 'block';
+}
+function closeForm() { $('form').style.display = 'none'; }
+function logout() {
+  if (!confirm('이 기기의 등록을 해제합니다.')) return;
+  api('o.logout', {}, function () { ST.s = null; store('edoc_s', null); showLogin(); });
+}
+
+/* ---------- 종류별 본문 ---------- */
+function raRow(x) { return '<div class="ra"><div><span class="muted">' + esc(x.task) + '</span> ' + lv(x.res) + '</div><div class="h">' + esc(x.haz) + '</div><div class="muted">' + esc(x.ctrl) + '</div>' + (x.add ? '<div>+ ' + esc(x.add) + '</div>' : '') + '</div>'; }
+function renderGeneric(r, d, part) {
+  if (part === 'head') return '<div class="kv"><div>일자</div><div>' + esc(r.date) + '</div><div>상태</div><div>' + esc(r.status) + '</div></div>';
+  var s = d._sum || {}, keys = Object.keys(s);
+  return keys.length ? '<div class="card"><h2>내용</h2><div class="kv">' + keys.map(function (k) { var v = s[k]; return '<div>' + esc(k) + '</div><div>' + esc(typeof v === 'object' ? JSON.stringify(v) : v) + '</div>'; }).join('') + '</div></div>' : '';
+}
+
+/* ---------- 설정 (관리) ---------- */
+function loadAdmin() { api('o.admin', {}, function (a) { ST.admin = a; renderAdmin(); }); }
+function renderAdmin() {
+  $('btnHome').style.display = ''; $('btnAdmin').style.display = 'none';
+  var a = ST.admin;
+  var h = '<div class="card"><h2>승인자 명단</h2><p class="muted">여기 있는 주소만 기기를 등록할 수 있고, 결정 요청과 본선 의견 알림 메일을 받습니다. 「사용」을 끄면 등록된 기기도 바로 막힙니다.</p><table class="a"><tr><th>메일</th><th>이름</th><th>사용</th><th>관리</th></tr>';
+  a.approvers.forEach(function (p, i) { h += '<tr><td>' + esc(p.email) + '</td><td>' + esc(p.name) + '</td><td><input type="checkbox" ' + (p.active ? 'checked' : '') + ' onchange="saveAp(' + i + ',\'active\',this.checked)"></td><td><input type="checkbox" ' + (p.admin ? 'checked' : '') + ' onchange="saveAp(' + i + ',\'admin\',this.checked)"></td></tr>'; });
+  h += '</table><h3>추가</h3><input type="email" id="apEm" placeholder="메일"><input type="text" id="apNm" placeholder="이름 (서식의 Person in Charge 에 들어갑니다. 예: KIM A.B.)" style="margin-top:6px"><div style="margin-top:8px"><button class="btn" onclick="addAp()">추가</button></div></div>';
+  h += '<div class="card"><h2>선박 비밀번호</h2><p class="muted">본선 시범판 「선박 설정 - 클라우드」에 넣는 번호입니다. 새로 만들면 이전 번호는 바로 막힙니다.</p><table class="a"><tr><th>호선</th><th>비밀번호</th><th>사용</th><th>마지막 접속</th><th></th></tr>';
+  a.ships.forEach(function (p, i) { h += '<tr><td><b>' + esc(p.code) + '</b><div class="muted">' + esc(p.name) + '</div></td><td style="font-family:Consolas,monospace;font-size:16px">' + esc(p.pin) + '</td><td><input type="checkbox" ' + (p.active ? 'checked' : '') + ' onchange="saveShip(' + i + ',false,this.checked)"></td><td class="muted">' + esc(hm(p.last)) + '</td><td><button class="btn s g" onclick="saveShip(' + i + ',true)">새 번호</button></td></tr>'; });
+  h += '</table></div><div class="card"><h2>주소</h2><div class="muted">서버 주소 (본선 시범판에 넣는 주소)</div><input type="text" readonly value="' + esc(a.execUrl) + '" onclick="this.select()">' +
+    '<div class="muted" style="margin-top:10px">감독 화면 주소 (확인 링크와 알림 메일이 이 주소로 갑니다)</div><input type="text" id="offUrl" value="' + esc(a.officeUrl) + '"><div style="margin-top:6px"><button class="btn s" onclick="saveOffUrl()">저장</button></div>' +
+    '<div style="margin-top:12px"><a href="' + esc(a.sheetUrl) + '" target="_blank">대장 시트 열기</a></div></div>';
+  $('app').innerHTML = h;
+}
+function saveAp(i, k, v) { var p = Object.assign({}, ST.admin.approvers[i]); p[k] = v; api('o.saveApprover', { o: p }, function (a) { ST.admin = a; renderAdmin(); toast('저장'); }, function (m) { toast(m); renderAdmin(); }); }
+function addAp() { api('o.saveApprover', { o: { email: $('apEm').value, name: $('apNm').value, active: true, admin: false } }, function (a) { ST.admin = a; renderAdmin(); toast('추가'); }); }
+function saveShip(i, newPin, active) {
+  var p = Object.assign({}, ST.admin.ships[i]);
+  if (newPin && !confirm(p.code + ' 비밀번호를 새로 만듭니다. 본선에 새 번호를 알려야 합니다.')) return;
+  p.newPin = !!newPin; if (active != null) p.active = active;
+  api('o.saveShip', { o: p }, function (a) { ST.admin = a; renderAdmin(); toast('저장'); });
+}
+function saveOffUrl() { api('o.setOfficeUrl', { url: $('offUrl').value.trim() }, function (a) { ST.admin = a; renderAdmin(); toast('저장'); }); }
+
+/* ---------- 시작 ---------- */
+function start(params) {
+  ST.params = params || {};
+  if (ST.params.t) {
+    api('o.complete', { t: ST.params.t, device: deviceName() }, function (x) {
+      ST.s = x.s; store('edoc_s', x.s);
+      clearParams();
+      toast('이 기기가 등록됐습니다');
+      api('o.me', {}, function (me) { ST.me = me; loadList(); });
+    }, function (m) { clearParams(); showLogin(m); });
+    return;
+  }
+  ST.s = load('edoc_s');
+  if (!ST.s) { showLogin(); return; }
+  api('o.me', {}, function (me) {
+    ST.me = me;
+    var id = ST.params.doc || ST.params.job;
+    if (id) { clearParams(); openDoc(id); } else loadList();
+  });
+}
+function clearParams() {
+  try { if (window.google && google.script && google.script.history) google.script.history.replace(null, {}, ''); else history.replaceState(null, '', location.pathname); } catch (e) { }
+}
+if (window.google && google.script && google.script.url) google.script.url.getLocation(function (loc) { start(loc.parameter || {}); });
+else start(Object.fromEntries(new URLSearchParams(location.search)));
+</script>
+</body>
+</html>
