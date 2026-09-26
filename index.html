@@ -106,9 +106,9 @@ var LVN = { L: 'Low', M: 'Medium', H: 'High', S: 'Severe' };
 /* 문서 종류별 화면 - 서버 TYPES 와 짝. 새 종류는 여기에 결정 버튼과 본문 그리기를 더한다 */
 var TYPE_UI = {
   PTW: {
-    buttons: [{ k: 'agreed', label: 'Agreed', cls: 'ok' }, { k: 'cond', label: '조건부', cls: 'warn', ask: '조건 (본선 14-02, 24-06 의 Condition 칸에 들어갑니다)' }, { k: 'not', label: 'Not Agreed', cls: 'bad', ask: '동의하지 않는 이유 (본선에 전달됩니다)' }],
+    buttons: [{ k: 'agreed', label: 'Agreed', cls: 'ok' }, { k: 'cond', label: '조건부', cls: 'warn', ask: '조건 (본선 14-02, 24-06 의 Condition 칸에 들어가고, 작업허가서 발급 때 본선에 보입니다)' }, { k: 'not', label: 'Not Agreed', cls: 'bad', ask: '동의하지 않는 이유 (본선에 전달됩니다)' }],
     resultCls: { agreed: '', cond: 'warn', not: 'bad' },
-    decideTitle: '감독 동의 <span class="muted">14-02 & 24-06</span>',
+    decideTitle: '감독 결재 <span class="muted">작업허가서 & RA (14-02, 24-06)</span>',
     body: renderPTW
   }
 };
@@ -117,9 +117,9 @@ function renderPTW(r, d, part) {
   var s = d._sum || {}, pr = d._print || {};
   if (part === 'head') return '<div class="kv"><div>작업일</div><div>' + esc(d.workDate) + ' ' + esc(d.start || '') + ' ~ ' + esc(d.end || '') + '</div><div>장소</div><div>' + esc(s.location) + '</div><div>종류</div><div>' + esc((s.types || []).join(', ')) + '</div><div>CP</div><div>' + esc(d.cp) + '</div><div>작업자</div><div>' + esc((d.workers || []).join(', ')) + '</div><div>장비</div><div>' + esc(d.tools) + '</div><div>상태</div><div>' + esc(s.status) + (s.late ? ' <span class="pill bad">사후 작성</span>' : '') + (s.verbal ? '<br><span class="muted">구두 동의 ' + esc(s.verbal) + '</span>' : '') + '</div></div>';
   var h = '', fb = [];
-  if (pr.hrwp) fb.push('<button class="btn s g" onclick="showForm(\'hrwp\')">14-02 서식</button>');
-  if (pr.ra) fb.push('<button class="btn s g" onclick="showForm(\'ra\')">24-06 서식</button>');
   if (pr.ptw) fb.push('<button class="btn s g" onclick="showForm(\'ptw\')">작업허가서 서식</button>');
+  if (pr.ra) fb.push('<button class="btn s g" onclick="showForm(\'ra\')">24-06 서식</button>');
+  if (pr.hrwp) fb.push('<button class="btn s g" onclick="showForm(\'hrwp\')">14-02 서식</button>');
   if (fb.length) h += '<div class="card"><h2>서식으로 보기</h2><p class="muted">본선이 보낸 시점의 모양입니다. 감독 결정 칸은 본선에 반영된 뒤 본선 인쇄본에 들어갑니다.</p>' + fb.join(' ') + '</div>';
   var nl = s.nonLow || [];
   h += '<div class="card"><h2>리스크평가</h2><div class="muted">' + esc(s.raTasks || '') + ' | 적용 ' + (s.raCount || 0) + '줄 | ' + (s.raDone ? 'RA 승인 ' + esc(hm(s.raDone)) : '<span style="color:#b42318">RA 승인 전</span>') + '</div>' +
@@ -130,6 +130,7 @@ function renderPTW(r, d, part) {
   if (ps.length) h += '<div class="card"><h2>작업허가서</h2>' + ps.map(function (p) {
     var st = p.paper ? (p.closed ? '종이 서식 종결' : '종이 서식') : p.closed ? (p.res || '종결') : p.expired ? '유효시간 지남' : p.issued ? '발급' : '발급 전';
     return '<div class="ra"><div class="h">' + esc(p.form) + ' ' + esc(p.type) + ' <span class="pill' + (p.closed ? ' ok' : p.expired ? ' bad' : '') + '">' + esc(st) + '</span>' + (p.late ? ' <span class="pill bad">사후 기록</span>' : '') + '</div>' +
+      (p.paper ? '' : '<div class="muted">' + esc(p.loc || '') + (p.det ? ' | ' + esc(p.det) : '') + (p.cp ? ' | CP ' + esc(p.cp) : '') + '</div>') +
       (p.from ? '<div class="muted">유효 ' + esc(hm(p.from)) + ' ~ ' + esc(hm(p.to)) + '</div>' : '') + (p.fb ? '<div class="note info"><b>Safety Feedback</b><br>' + esc(p.fb) + '</div>' : '') + '</div>';
   }).join('') + '</div>';
   return h;
