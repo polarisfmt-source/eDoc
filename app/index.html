@@ -1,0 +1,297 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Vega Dipper</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#12324f">
+<style>
+:root{--bg:#f3f4f6;--card:#fff;--ink:#1c222b;--mute:#667085;--line:#d5d9e0;--acc:#1f5fa8;--bad:#b42318;--badb:#fde7e6;--ok:#1e7b43;--okb:#e5f4ea}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 "Segoe UI","Malgun Gothic",sans-serif}
+header{background:#12324f;color:#fff;padding:18px 16px 14px;text-align:center}
+header h1{margin:0;font-size:22px;letter-spacing:.5px}
+header small{color:#9fc3ee;font-size:12px}
+main{max-width:440px;margin:0 auto;padding:16px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:16px;margin-bottom:14px}
+.card h2{font-size:17px;margin:0 0 12px}
+label{display:block;font-size:12.5px;color:var(--mute);margin:10px 0 3px}
+input{font:inherit;width:100%;padding:8px 9px;border:1px solid var(--line);border-radius:5px;background:#fff;color:var(--ink)}
+.btn{font:inherit;width:100%;padding:10px;margin-top:14px;border:1px solid var(--acc);background:var(--acc);color:#fff;border-radius:5px;cursor:pointer}
+.btn.g{background:#fff;color:var(--acc)}
+.btn:disabled{opacity:.5}
+.links{display:flex;justify-content:space-between;gap:10px;margin-top:12px;font-size:13.5px}
+a{color:var(--acc)}
+.msg{padding:9px 11px;border-radius:5px;margin:10px 0 0;font-size:13.5px}
+.msg.bad{background:var(--badb);color:var(--bad)}
+.msg.ok{background:var(--okb);color:var(--ok)}
+.consent{border:1px solid var(--line);border-radius:5px;padding:10px 12px;font-size:13px;background:#fafbfc;margin-top:12px}
+.consent b{display:block;margin-bottom:6px}
+.consent ol{margin:0;padding-left:18px}
+.ck{display:flex;gap:8px;align-items:flex-start;margin-top:10px;font-size:13.5px;color:var(--ink)}
+.ck input{width:auto;margin-top:4px}
+.mute{color:var(--mute);font-size:13px}
+.hide{display:none}
+</style>
+</head>
+<body>
+<header><h1>Vega Dipper</h1><small>Created by K.S. Hwang</small></header>
+<main id="v"><div class="card"><p class="mute">Loading...</p></div></main>
+<script>
+/* Vega Dipper 공개 껍데기 - 회사 자료 없음. 로그인, 가입 & 동의, 승인 대기, 하선, 비밀번호 바꾸기, 사무실 계정 메일 링크.
+ * 승선 계정이 로그인하면 서버에서 회사 자료 묶음(본선 화면 전체, gzip)을 받아 IndexedDB 에 두고 document.write 로 띄운다.
+ * 전역에는 window.VD 하나만 남긴다 (뒤에 올 본선 화면의 최상위 이름과 부딪히지 않게) */
+(function () {
+  "use strict";
+  var EXEC_URL = "https://script.google.com/macros/s/AKfycbykDP_KT0SOpUelOJ1C8HDQwaHE1khNYTNSdGWIo16ukcEz_Wp8qNQNEaQUX48_rFnd/exec";
+  var LS_S = "vd.s", LS_ME = "vd.me";
+  var st = { s: lsGet(LS_S), me: jsonGet(LS_ME), cfg: null };
+  var $ = function (q) { return document.querySelector(q); };
+
+  function lsGet(k) { try { return localStorage.getItem(k) || ""; } catch (e) { return ""; } }
+  function lsSet(k, v) { try { if (v) localStorage.setItem(k, v); else localStorage.removeItem(k); } catch (e) { } }
+  function jsonGet(k) { try { return JSON.parse(lsGet(k) || "null"); } catch (e) { return null; } }
+  function esc(x) { return String(x == null ? "" : x).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
+  function device() { return String(navigator.userAgent || "").slice(0, 120); }
+  function netErr(e) { return /Failed to fetch|NetworkError|Load failed|timeout/i.test(String(e && e.message || e)); }
+
+  /* 서버 요청 : {op, s, ...} -> data. 실패는 Error(서버 문구). 끊기면 Error("offline") */
+  function api(op, data, ms) {
+    var body = Object.assign({}, data || {}, { op: op });
+    if (st.s && body.s == null) body.s = st.s;
+    var ctl = typeof AbortController !== "undefined" ? new AbortController() : null;
+    var tm = ctl ? setTimeout(function () { ctl.abort(); }, ms || 60000) : null;
+    return fetch(EXEC_URL, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(body), redirect: "follow", signal: ctl ? ctl.signal : undefined })
+      .then(function (r) { return r.text(); })
+      .then(function (t) {
+        var o; try { o = JSON.parse(t); } catch (e) { throw new Error("The server did not answer properly."); }
+        if (!o.ok) throw new Error(o.err || "Request failed.");
+        return o.data;
+      }, function (e) { throw new Error(e && e.name === "AbortError" ? "timeout" : "Failed to fetch"); })
+      .finally(function () { if (tm) clearTimeout(tm); });
+  }
+
+  /* IndexedDB : 회사 자료 묶음 한 벌 {ver, html} */
+  function idb() {
+    return new Promise(function (ok, no) {
+      var r = indexedDB.open("vd", 1);
+      r.onupgradeneeded = function () { r.result.createObjectStore("kv"); };
+      r.onsuccess = function () { ok(r.result); };
+      r.onerror = function () { no(r.error); };
+    });
+  }
+  function idbGet(k) { return idb().then(function (db) { return new Promise(function (ok) { var q = db.transaction("kv").objectStore("kv").get(k); q.onsuccess = function () { ok(q.result || null); }; q.onerror = function () { ok(null); }; }); }).catch(function () { return null; }); }
+  function idbPut(k, v) { return idb().then(function (db) { return new Promise(function (ok) { var t = db.transaction("kv", "readwrite"); t.objectStore("kv").put(v, k); t.oncomplete = function () { ok(true); }; t.onerror = function () { ok(false); }; }); }).catch(function () { return false; }); }
+
+  function gunzip(b64) {
+    var bin = atob(b64), u = new Uint8Array(bin.length);
+    for (var i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i);
+    var ds = new Blob([u]).stream().pipeThrough(new DecompressionStream("gzip"));
+    return new Response(ds).text();
+  }
+
+  /* ================= 화면 ================= */
+  function show(h) { $("#v").innerHTML = h; }
+  function msg(t, ok) { var el = $("#msg"); if (el) { el.className = "msg " + (ok ? "ok" : "bad"); el.textContent = t; el.classList.remove("hide"); } }
+  function val(id) { var el = $("#" + id); return el ? el.value : ""; }
+  function busy(on) { Array.prototype.forEach.call(document.querySelectorAll("button"), function (b) { b.disabled = on; }); }
+  function errText(e) { return netErr(e) ? "No internet connection. Try again when online." : String(e && e.message || e); }
+  function on(id, fn) { var el = $("#" + id); if (el) el.onclick = function (ev) { ev.preventDefault(); fn(); }; }
+  function run(p) { busy(true); return p.catch(function (e) { msg(errText(e)); }).then(function () { busy(false); }); }
+
+  function vLogin(note) {
+    show('<div class="card"><h2>Log in</h2>' + (note ? '<div class="msg ok">' + esc(note) + '</div>' : '') +
+      '<label>User ID</label><input id="lid" autocomplete="username" autocapitalize="none">' +
+      '<label>Password</label><input id="lpw" type="password" autocomplete="current-password">' +
+      '<button class="btn" id="bLogin">Log in</button><div id="msg" class="hide"></div>' +
+      '<div class="links"><a href="#" id="aSignup">New crew : Sign up</a><a href="#" id="aOffice">Office staff</a></div></div>' +
+      '<p class="mute">Forgot your password? Ask the Master to reset it.</p>');
+    on("bLogin", doLogin); on("aSignup", vSignup); on("aOffice", vOffice);
+    $("#lpw").onkeydown = function (e) { if (e.key === "Enter") doLogin(); };
+  }
+  function doLogin() {
+    var id = val("lid").trim(), pw = val("lpw");
+    if (!id || !pw) return msg("Enter your user ID and password.");
+    run(api("u.login", { id: id, pw: pw, device: device() }).then(function (r) {
+      if (r.needDevice) return vLogin("This is a new device for an office account. A link has been sent to your email. Open it on this device.");
+      setSession(r.s, r.me);
+      return route();
+    }));
+  }
+
+  function consentHtml() {
+    var ret = st.cfg && st.cfg.retention ? st.cfg.retention : "(to be confirmed)";
+    return '<div class="consent"><b>Consent to Collection and Use of Personal Information</b><ol>' +
+      '<li>Items collected : name, rank, user ID, signature records, device information, access log</li>' +
+      '<li>Purpose : preparing and signing Permit to Work &amp; Risk Assessment, office approval</li>' +
+      '<li>Retention : ' + esc(ret) + ' after sign-off, then deleted</li>' +
+      '<li>You may refuse. If you refuse, you cannot use eDoc and will sign the paper forms.</li></ol>' +
+      '<label class="ck"><input type="checkbox" id="sAgree"> I agree to the collection and use of my personal information as above.</label></div>';
+  }
+  function vSignup() {
+    var draw = function () {
+      show('<div class="card"><h2>Sign up</h2><p class="mute">The Master approves your account. The ship password only confirms your ship.</p>' +
+        '<label>Ship code</label><input id="sShip" autocapitalize="characters" placeholder="e.g. SLE">' +
+        '<label>Ship password</label><input id="sPin" type="password" autocomplete="off">' +
+        '<label>Rank</label><input id="sRank" placeholder="e.g. C/O, 2/E, AB">' +
+        '<label>Name (English, as in your passport)</label><input id="sName" autocapitalize="characters">' +
+        '<label>User ID (4-20 letters or numbers)</label><input id="sId" autocomplete="username" autocapitalize="none">' +
+        '<label>Password (8 characters or more)</label><input id="sPw" type="password" autocomplete="new-password">' +
+        '<label>Password again</label><input id="sPw2" type="password" autocomplete="new-password">' +
+        consentHtml() + '<button class="btn" id="bSign">Sign up</button><div id="msg" class="hide"></div>' +
+        '<div class="links"><a href="#" id="aBack">Back to log in</a></div></div>');
+      on("bSign", doSignup); on("aBack", function () { vLogin(); });
+    };
+    if (st.cfg) return draw();
+    api("u.config", {}, 20000).then(function (c) { st.cfg = c; }, function () { }).then(draw);
+  }
+  function doSignup() {
+    if (val("sPw") !== val("sPw2")) return msg("The two passwords are different.");
+    if (!$("#sAgree").checked) return msg("Consent is required to use Vega Dipper.");
+    var id = val("sId").trim().toLowerCase();
+    run(api("u.signup", { ship: val("sShip").trim().toUpperCase(), pin: val("sPin").trim(), rank: val("sRank").trim(), name: val("sName").trim(), id: id, pw: val("sPw"), consent: true, device: device() })
+      .then(function () { vLogin("Signed up as " + id + ". Log in after the Master approves your account."); }));
+  }
+
+  function vOffice() {
+    show('<div class="card"><h2>Office staff</h2><p class="mute">Only e-mail addresses on the office list. A link is sent to your e-mail; the account is made when you open it.</p>' +
+      '<label>E-mail</label><input id="oMail" type="email" autocomplete="email">' +
+      '<label>Name</label><input id="oName">' +
+      '<label>User ID</label><input id="oId" autocapitalize="none">' +
+      '<label>Password (8 characters or more)</label><input id="oPw" type="password" autocomplete="new-password">' +
+      '<button class="btn" id="bOffice">Send link</button><div id="msg" class="hide"></div>' +
+      '<div class="links"><a href="#" id="aBack">Back to log in</a></div></div>');
+    on("aBack", function () { vLogin(); });
+    on("bOffice", function () {
+      run(api("u.officeSignup", { email: val("oMail").trim(), name: val("oName").trim(), id: val("oId").trim().toLowerCase(), pw: val("oPw"), device: device() })
+        .then(function () { msg("If the address is on the office list, a link has been sent. Open it on this device.", true); }));
+    });
+  }
+
+  function vPending() {
+    var me = st.me || {};
+    show('<div class="card"><h2>Waiting for approval</h2><p>' + esc(me.name) + ' (' + esc(me.rank) + ')<br>' + esc(me.ship) + ' ' + esc(me.shipName || "") + '</p>' +
+      '<p class="mute">The Master of your ship approves your account' + (me.rank && /master|capt/i.test(me.rank) ? " (the Master's account is approved by the office)" : "") + '.</p>' +
+      '<button class="btn" id="bAgain">Check again</button><button class="btn g" id="bOut">Log out</button><div id="msg" class="hide"></div></div>');
+    on("bAgain", function () { run(refresh().then(route)); });
+    on("bOut", logout);
+  }
+  function vOff() {
+    var me = st.me || {};
+    show('<div class="card"><h2>No ship on board</h2><p>' + esc(me.name) + ' (' + esc(me.rank) + ')</p><p class="mute">Your account is kept after sign-off. To join a ship, enter its code and ship password. The Master of that ship approves you.</p>' +
+      '<label>Ship code</label><input id="jShip" autocapitalize="characters">' +
+      '<label>Ship password</label><input id="jPin" type="password" autocomplete="off">' +
+      '<button class="btn" id="bJoin">Request to join</button><button class="btn g" id="bOut">Log out</button><div id="msg" class="hide"></div></div>');
+    on("bOut", logout);
+    on("bJoin", function () {
+      run(api("u.join", { ship: val("jShip").trim().toUpperCase(), pin: val("jPin").trim() }).then(function (me) { setSession(st.s, me); return route(); }));
+    });
+  }
+  function vChangePw(forced) {
+    show('<div class="card"><h2>Change password</h2>' + (forced ? '<p class="mute">Your password was reset. Choose a new one before you continue.</p>' : '') +
+      '<label>Current (temporary) password</label><input id="cOld" type="password" autocomplete="current-password">' +
+      '<label>New password (8 characters or more)</label><input id="cNew" type="password" autocomplete="new-password">' +
+      '<label>New password again</label><input id="cNew2" type="password" autocomplete="new-password">' +
+      '<button class="btn" id="bPw">Change</button><button class="btn g" id="bOut">Log out</button><div id="msg" class="hide"></div></div>');
+    on("bOut", logout);
+    on("bPw", function () {
+      if (val("cNew") !== val("cNew2")) return msg("The two passwords are different.");
+      run(api("u.changePw", { old: val("cOld"), pw: val("cNew") }).then(refresh).then(route));
+    });
+  }
+  function vOfficeHome() {
+    var me = st.me || {};
+    show('<div class="card"><h2>' + esc(me.name || me.id) + '</h2><p class="mute">Office functions (approval, accounts, records) move into this app in a later version. Until then use the office screen.</p>' +
+      '<a class="btn" style="display:block;text-align:center;text-decoration:none" href="../">Open the office screen</a><button class="btn g" id="bOut">Log out</button><div id="msg" class="hide"></div></div>');
+    on("bOut", logout);
+  }
+  function vError(t, retry) {
+    show('<div class="card"><h2>Cannot start</h2><div class="msg bad">' + esc(t) + '</div>' + (retry ? '<button class="btn" id="bRetry">Try again</button>' : '') + '<button class="btn g" id="bOut">Log out</button></div>');
+    on("bRetry", function () { run(route()); });
+    on("bOut", logout);
+  }
+
+  /* ================= 흐름 ================= */
+  function setSession(s, me) { st.s = s || ""; st.me = me || null; lsSet(LS_S, st.s); lsSet(LS_ME, me ? JSON.stringify(me) : ""); }
+  function refresh() { return api("u.me", {}, 20000).then(function (me) { setSession(st.s, me); return me; }); }
+  function logout() {
+    var s = st.s;
+    var off = pushEndpoint().then(function (ep) { return ep && s ? api("u.pushOff", { s: s, endpoint: ep }, 8000).catch(function () { }) : null; });
+    return off.then(function () { return s ? api("u.logout", { s: s }, 8000).catch(function () { }) : null; })
+      .then(function () { setSession("", null); location.replace(location.pathname); });
+  }
+
+  /* 접속 키가 있으면 계정 상태를 새로 읽는다. 끊겼으면 전에 받은 계정과 묶음으로 오프라인 시작 */
+  function route() {
+    if (!st.s) { vLogin(); return Promise.resolve(); }
+    return refresh().then(next, function (e) {
+      var m = String(e && e.message || e);
+      if (m === "LOGIN") { setSession("", null); vLogin("Your session has ended. Log in again."); return; }
+      if (netErr(e) && st.me) return next(st.me, true);
+      vError(errText(e), true);
+    });
+  }
+  function next(me, offline) {
+    if (me.mustChange) return vChangePw(true);
+    if (me.status === "pending") return vPending();
+    if (me.status === "off") return vOff();
+    if (me.status === "office") return vOfficeHome();
+    if (me.status !== "onboard") return vError("Unknown account state.", false);
+    return loadPack(me, offline).then(start, function (e) { vError(errText(e), true); });
+  }
+  function loadPack(me, offline) {
+    show('<div class="card"><p class="mute">Loading the ship screen...</p></div>');
+    return idbGet("pack").then(function (have) {
+      if (have && (offline || !me.pack || have.ver === me.pack)) return have.html;
+      if (offline) throw new Error("The ship screen has not been downloaded on this device yet. Connect to the internet once.");
+      return api("u.pack", { have: have ? have.ver : "" }, 180000).then(function (r) {
+        if (r.same && have) return have.html;
+        return gunzip(r.gz).then(function (html) { return idbPut("pack", { ver: r.ver, html: html, at: new Date().toISOString() }).then(function () { return html; }); });
+      });
+    });
+  }
+
+  /* 본선 화면 띄우기. 로그아웃은 새로고침 (같은 묶음을 한 문서에 두 번 쓰면 const 가 다시 선언된다) */
+  function start(html) {
+    window.VD = {
+      s: st.s, me: st.me, api: function (op, data) { return api(op, data); },
+      pushOn: pushOn, logout: logout,
+      expired: function () { location.replace(location.pathname); }   // 다시 열면 u.me 가 LOGIN 이면 로그인 화면, PWCHANGE 면 바꾸기 화면
+    };
+    document.open();
+    document.write(html);
+    document.close();
+  }
+
+  /* ================= 알림 (서비스 워커) ================= */
+  function swReg() { return ("serviceWorker" in navigator) ? navigator.serviceWorker.ready : Promise.reject(new Error("This browser has no notifications.")); }
+  function pushEndpoint() { return ("serviceWorker" in navigator) ? navigator.serviceWorker.getRegistration().then(function (r) { return r && r.pushManager ? r.pushManager.getSubscription() : null; }).then(function (s) { return s ? s.endpoint : ""; }).catch(function () { return ""; }) : Promise.resolve(""); }
+  function b64u(s) { s = s.replace(/-/g, "+").replace(/_/g, "/"); s += "===".slice((s.length + 3) % 4); var b = atob(s), u = new Uint8Array(b.length); for (var i = 0; i < b.length; i++) u[i] = b.charCodeAt(i); return u; }
+  function pushOn() {
+    if (!st.me || !st.me.push) return Promise.reject(new Error("The server has no notification key."));
+    return Notification.requestPermission().then(function (p) {
+      if (p !== "granted") throw new Error("Notifications are blocked in this browser.");
+      return swReg();
+    }).then(function (reg) {
+      return reg.pushManager.getSubscription().then(function (old) { return old || reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64u(st.me.push) }); });
+    }).then(function (sub) { return api("u.pushSub", { sub: sub.toJSON(), device: device() }); });
+  }
+
+  /* ================= 시작 ================= */
+  if ("serviceWorker" in navigator && (location.protocol === "https:" || /^(localhost|127\.0\.0\.1)$/.test(location.hostname))) {
+    navigator.serviceWorker.register("sw.js").catch(function () { });
+  }
+  var q = new URLSearchParams(location.search), vt = q.get("vt");
+  if (vt) {
+    history.replaceState(null, "", location.pathname);
+    show('<div class="card"><p class="mute">Checking the link...</p></div>');
+    api("u.confirm", { t: vt, device: device() }).then(function (r) { setSession(r.s, r.me); return route(); }, function (e) { vLogin(); msg(errText(e)); });
+  } else route();
+})();
+</script>
+</body>
+</html>
