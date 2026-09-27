@@ -129,7 +129,6 @@ table.t th{background:#f0f2f5;font-weight:600}
     var id = val("lid").trim(), pw = val("lpw");
     if (!id || !pw) return msg("Enter your user ID and password.");
     run(api("u.login", { id: id, pw: pw, device: device() }).then(function (r) {
-      if (r.needDevice) return vLogin("This is a new device for an office account. A link has been sent to your email. Open it on this device.");
       setSession(r.s, r.me);
       return route();
     }));
@@ -180,7 +179,7 @@ table.t th{background:#f0f2f5;font-weight:600}
     on("aBack", function () { vLogin(); });
     on("bOffice", function () {
       run(api("u.officeSignup", { email: val("oMail").trim(), name: val("oName").trim(), id: val("oId").trim().toLowerCase(), pw: val("oPw"), device: device() })
-        .then(function () { msg("If the address is on the office list, a link has been sent. Open it on this device.", true); }));
+        .then(function () { msg("If the address is on the office list, a link has been sent. Open it to create the account. After that, log in with your user ID and password on any device.", true); }));
     });
   }
 

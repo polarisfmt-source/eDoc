@@ -1,7 +1,7 @@
 /* Vega Dipper 서비스 워커 - 껍데기 파일 캐시(인터넷 없이 시작), 폰 알림.
  * 회사 자료 묶음은 여기 두지 않는다 (껍데기가 로그인 뒤 IndexedDB 에 둔다).
- * 1a21a65f 는 build.py 가 껍데기 내용의 해시로 바꾼다 - 껍데기가 바뀌면 이 파일도 바뀌어 새 워커가 깔린다 */
-var CACHE = "vd-shell-1a21a65f";
+ * 8faef9e8 는 build.py 가 껍데기 내용의 해시로 바꾼다 - 껍데기가 바뀌면 이 파일도 바뀌어 새 워커가 깔린다 */
+var CACHE = "vd-shell-8faef9e8";
 var FILES = ["./", "./index.html", "./manifest.json", "./icon-192.png", "./icon-512.png"];
 
 self.addEventListener("install", function (e) {
