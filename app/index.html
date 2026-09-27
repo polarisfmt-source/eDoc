@@ -36,6 +36,18 @@ a{color:var(--acc)}
 .ck input{width:auto;margin-top:4px}
 .mute{color:var(--mute);font-size:13px}
 .hide{display:none}
+/* 계정 관리 화면 (본선 화면 안에서도 쓰므로 본선 화면 이름과 같은 꼴로) */
+main.wide{max-width:960px}
+table.t{border-collapse:collapse;width:100%;font-size:13.5px}
+table.t th,table.t td{border:1px solid var(--line);padding:5px 7px;vertical-align:top;text-align:left}
+table.t th{background:#f0f2f5;font-weight:600}
+.btn.s{width:auto;margin:2px 4px 2px 0;padding:3px 9px;font-size:12.5px}
+.btn.s.r{border-color:var(--bad);background:#fff;color:var(--bad)}
+.chip{display:inline-block;padding:1px 7px;border-radius:10px;font-size:12px;border:1px solid var(--line);margin:1px 3px 1px 0;background:#fff}
+.note{padding:8px 10px;border-radius:4px;margin:8px 0;font-size:13px}
+.note.bad{background:var(--badb);color:var(--bad)}
+.note.ok{background:var(--okb);color:var(--ok)}
+.ua-role{margin-right:10px;white-space:nowrap;font-size:13px}
 </style>
 </head>
 <body>
@@ -203,11 +215,95 @@ a{color:var(--acc)}
       run(api("u.changePw", { old: val("cOld"), pw: val("cNew") }).then(refresh).then(route));
     });
   }
+  /* 사무실 계정 첫 화면 : 담당선 계정 관리 (선장 계정 승인은 감독만). 결재, 기록 열람은 5단계 - 그때까지 옛 감독 화면 */
   function vOfficeHome() {
-    var me = st.me || {};
-    show('<div class="card"><h2>' + esc(me.name || me.id) + '</h2><p class="mute">Office functions (approval, accounts, records) move into this app in a later version. Until then use the office screen.</p>' +
-      '<a class="btn" style="display:block;text-align:center;text-decoration:none" href="../">Open the office screen</a><button class="btn g" id="bOut">Log out</button><div id="msg" class="hide"></div></div>');
+    var me = st.me || {}, ships = me.ships || [];
+    document.querySelector("main").classList.add("wide");
+    show('<div class="card"><h2>' + esc(me.name || me.id) + '</h2><p class="mute">작업 전 결재와 기록 열람은 다음 판에 이 앱으로 옮깁니다. 그때까지는 감독 화면을 씁니다.</p>' +
+      '<a class="btn" style="display:block;text-align:center;text-decoration:none" href="../">감독 화면 열기</a><button class="btn g" id="bOut">Log out</button></div>' +
+      '<div class="card"><h2>계정 관리</h2><label>호선</label><select id="oShip" style="font:inherit;padding:7px;border:1px solid var(--line);border-radius:5px">' +
+      ships.map(function (s) { return '<option>' + esc(s) + '</option>'; }).join("") + '</select><div id="accUI" style="margin-top:12px"></div></div>');
     on("bOut", logout);
+    var load = function () { accountsUI($("#accUI"), { ship: $("#oShip").value }); };
+    $("#oShip").onchange = load;
+    if (ships.length) load(); else $("#accUI").innerHTML = '<p class="mute">담당선이 없습니다.</p>';
+  }
+
+  /* ================= 계정 관리 (선장 : 그 배 / 감독 : 담당선) =================
+   * 본선 화면(선장 「선원 계정」 탭)과 사무실 첫 화면이 같이 쓴다. 권한은 서버가 막고 화면은 할 수 있는 버튼만 보인다.
+   * opt : ship(감독이 볼 호선), crew([{i, label}] 선원 명단 줄 - 승인할 때 계정과 연결), onApproved(계정, 명단 줄 번호), onChange() */
+  var ROLE_KO = { crew: "선원", officer: "사관", ce: "기관장", master: "선장" };
+  function accountsUI(el, opt) {
+    opt = opt || {};
+    if (!el) return Promise.resolve();
+    var office = !!(st.me && st.me.status === "office"), grant = office ? ["officer", "ce", "master"] : ["officer", "ce"];
+    var note = "", list = [];
+    var roleBoxes = function (x, checked) {
+      return grant.map(function (r) { return '<label style="margin-right:10px;white-space:nowrap;font-size:13px"><input type="checkbox" data-ua-role="' + esc(x.id) + '" value="' + r + '"' + (checked && x.roles.indexOf(r) >= 0 ? " checked" : "") + '> ' + ROLE_KO[r] + '</label>'; }).join("");
+    };
+    var chips = function (x) { return (x.roles || []).map(function (r) { return '<span class="chip">' + esc(ROLE_KO[r] || r) + '</span>'; }).join(""); };
+    var draw = function () {
+      var pend = list.filter(function (x) { return x.status === "pending"; }), on = list.filter(function (x) { return x.status === "onboard"; }), off = list.filter(function (x) { return x.status === "off"; });
+      var h = note;
+      h += '<h3 style="margin:10px 0 6px;font-size:14px">승인 대기 ' + pend.length + '명</h3>';
+      if (pend.length) {
+        h += '<table class="t"><tr><th>이름 / 직책</th><th>아이디, 가입일</th><th>역할 (선원은 기본)</th>' + (opt.crew ? '<th>선원 명단 줄</th>' : '') + '<th></th></tr>';
+        pend.forEach(function (x) {
+          h += '<tr><td><b>' + esc(x.name) + '</b><br>' + esc(x.rank) + '</td><td>' + esc(x.id) + '<br><span class="mute">' + esc(String(x.joined || "").slice(0, 16).replace("T", " ")) + '</span></td><td>' + (x.canManage ? roleBoxes(x, false) : '<span class="mute">감독이 승인</span>') + '</td>' +
+            (opt.crew ? '<td><select data-ua-link="' + esc(x.id) + '" style="font:inherit;padding:3px"><option value="">(연결 안 함)</option>' + opt.crew.map(function (c) { return '<option value="' + c.i + '"' + (c.rank === x.rank ? " selected" : "") + '>' + esc(c.label) + '</option>'; }).join("") + '</select></td>' : '') +
+            '<td style="white-space:nowrap">' + (x.canManage ? '<button class="btn s" data-ua="approve" data-id="' + esc(x.id) + '">승인</button><button class="btn s r" data-ua="reject" data-id="' + esc(x.id) + '">거절</button>' : '') + '</td></tr>';
+        });
+        h += '</table>';
+      } else h += '<p class="mute">없습니다.</p>';
+      h += '<h3 style="margin:14px 0 6px;font-size:14px">승선 ' + on.length + '명</h3>';
+      if (on.length) {
+        h += '<table class="t"><tr><th>이름 / 직책</th><th>아이디</th><th>역할</th><th></th></tr>';
+        on.forEach(function (x) {
+          h += '<tr><td><b>' + esc(x.name) + '</b><br>' + esc(x.rank) + (x.locked ? ' <span class="chip" style="color:var(--bad)">잠김</span>' : '') + '</td><td>' + esc(x.id) + '<br><span class="mute">마지막 접속 ' + esc(String(x.last || "-").slice(0, 16).replace("T", " ")) + '</span></td>' +
+            '<td>' + (x.canManage ? roleBoxes(x, true) + '<button class="btn s" data-ua="roles" data-id="' + esc(x.id) + '">역할 저장</button>' : chips(x)) + '</td><td style="white-space:nowrap">' +
+            (x.canManage ? (x.locked ? '<button class="btn s" data-ua="unlock" data-id="' + esc(x.id) + '">잠금 풀기</button>' : '') + '<button class="btn s" data-ua="reset" data-id="' + esc(x.id) + '">비밀번호 초기화</button><button class="btn s r" data-ua="off" data-id="' + esc(x.id) + '">하선</button>' : '') + '</td></tr>';
+        });
+        h += '</table>';
+      } else h += '<p class="mute">없습니다.</p>';
+      if (off.length) h += '<details style="margin-top:10px"><summary class="mute">하선 ' + off.length + '명</summary><p class="mute">' + off.map(function (x) { return esc(x.name + " (" + x.rank + ", " + x.id + ")"); }).join("<br>") + '</p></details>';
+      el.innerHTML = h;
+    };
+    var load = function () {
+      return api("u.accounts", opt.ship ? { ship: opt.ship } : {}).then(function (r) {
+        list = r.filter(function (x) { return x.status !== "office" && (!opt.ship || x.ship === opt.ship); });
+        draw();
+      }, function (e) { el.innerHTML = '<div class="note bad">' + esc(errText(e)) + '</div>'; });
+    };
+    var roles = function (id) { return Array.prototype.filter.call(el.querySelectorAll("input[data-ua-role]"), function (b) { return b.getAttribute("data-ua-role") === id && b.checked; }).map(function (b) { return b.value; }); };
+    var find = function (id) { return list.filter(function (x) { return x.id === id; })[0]; };
+    el.onclick = function (ev) {
+      var b = ev.target.closest ? ev.target.closest("[data-ua]") : null;
+      if (!b || b.disabled) return;
+      var id = b.getAttribute("data-id"), x = find(id), act = b.getAttribute("data-ua"), p = null;
+      if (!x) return;
+      if (act === "approve") {
+        var ln = el.querySelector('select[data-ua-link="' + id + '"]'), li = ln ? ln.value : "";
+        p = api("u.approve", { id: id, roles: roles(id) }).then(function (r) { note = '<div class="note ok">' + esc(x.name) + ' 승인 (' + r.roles.map(function (k) { return ROLE_KO[k] || k; }).join(", ") + ')</div>'; if (opt.onApproved) opt.onApproved(x, li); });
+      } else if (act === "reject") {
+        if (!confirm(x.name + " 의 가입을 거절합니다. 계정은 하선 상태로 남습니다.")) return;
+        p = api("u.signOff", { id: id }).then(function () { note = '<div class="note ok">' + esc(x.name) + ' 거절</div>'; });
+      } else if (act === "roles") {
+        p = api("u.setRoles", { id: id, roles: roles(id) }).then(function (r) { note = '<div class="note ok">' + esc(x.name) + ' 역할 : ' + r.roles.map(function (k) { return ROLE_KO[k] || k; }).join(", ") + '</div>'; });
+      } else if (act === "off") {
+        if (!confirm(x.name + " 을(를) 하선 처리합니다. 계정은 남고 이 배 기록은 못 봅니다. 한 서명과 기록은 그대로 남습니다.")) return;
+        p = api("u.signOff", { id: id }).then(function () { note = '<div class="note ok">' + esc(x.name) + ' 하선 처리</div>'; });
+      } else if (act === "reset") {
+        if (!confirm(x.name + " 의 비밀번호를 초기화합니다. 그 사람의 기기는 모두 로그아웃됩니다.")) return;
+        p = api("u.reset", { id: id }).then(function (r) { note = '<div class="note ok" data-temp="' + esc(r.temp) + '">' + esc(x.name) + ' 임시 비밀번호 : <b style="font-size:16px;letter-spacing:1px">' + esc(r.temp) + '</b><br>본인에게 직접 전하십시오. 처음 로그인할 때 새 비밀번호로 바꿉니다.</div>'; });
+      } else if (act === "unlock") {
+        p = api("u.unlock", { id: id }).then(function () { note = '<div class="note ok">' + esc(x.name) + ' 잠금 풀기</div>'; });
+      }
+      if (!p) return;
+      Array.prototype.forEach.call(el.querySelectorAll("button"), function (k) { k.disabled = true; });
+      p.then(function () { if (opt.onChange) opt.onChange(); return load(); }, function (e) { note = '<div class="note bad">' + esc(errText(e)) + '</div>'; draw(); });
+    };
+    el.innerHTML = '<p class="mute">불러오는 중...</p>';
+    return load();
   }
   function vError(t, retry) {
     show('<div class="card"><h2>Cannot start</h2><div class="msg bad">' + esc(t) + '</div>' + (retry ? '<button class="btn" id="bRetry">Try again</button>' : '') + '<button class="btn g" id="bOut">Log out</button></div>');
@@ -259,7 +355,7 @@ a{color:var(--acc)}
   function start(html) {
     window.VD = {
       s: st.s, me: st.me, api: function (op, data) { return api(op, data); },
-      pushOn: pushOn, logout: logout,
+      pushOn: pushOn, logout: logout, accountsUI: accountsUI,
       expired: function () { location.replace(location.pathname); }   // 다시 열면 u.me 가 LOGIN 이면 로그인 화면, PWCHANGE 면 바꾸기 화면
     };
     document.open();
