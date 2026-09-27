@@ -20,7 +20,7 @@ main{max-width:440px;margin:0 auto;padding:16px}
 .card{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:16px;margin-bottom:14px}
 .card h2{font-size:17px;margin:0 0 12px}
 label{display:block;font-size:12.5px;color:var(--mute);margin:10px 0 3px}
-input{font:inherit;width:100%;padding:8px 9px;border:1px solid var(--line);border-radius:5px;background:#fff;color:var(--ink)}
+input,select{font:inherit;width:100%;padding:8px 9px;border:1px solid var(--line);border-radius:5px;background:#fff;color:var(--ink)}
 .btn{font:inherit;width:100%;padding:10px;margin-top:14px;border:1px solid var(--acc);background:var(--acc);color:#fff;border-radius:5px;cursor:pointer}
 .btn.g{background:#fff;color:var(--acc)}
 .btn:disabled{opacity:.5}
@@ -143,12 +143,21 @@ table.t th{background:#f0f2f5;font-weight:600}
       '<li>You may refuse. If you refuse, you cannot use eDoc and will sign the paper forms.</li></ol>' +
       '<label class="ck"><input type="checkbox" id="sAgree"> I agree to the collection and use of my personal information as above.</label></div>';
   }
+  /* 고르기 칸 : 서버가 목록을 주면 select, 못 받으면(옛 서버, 끊김) 글자 칸 */
+  function pickHtml(id, list, ph) {
+    if (!list || !list.length) return '<input id="' + id + '" autocapitalize="characters" placeholder="' + esc(ph) + '">';
+    return '<select id="' + id + '"><option value="">- Choose -</option>' + list.map(function (x) { return '<option>' + esc(x) + '</option>'; }).join("") + '</select>';
+  }
+  function withCfg(draw) {
+    if (st.cfg) return draw();
+    api("u.config", {}, 20000).then(function (c) { st.cfg = c; }, function () { }).then(draw);
+  }
   function vSignup() {
     var draw = function () {
       show('<div class="card"><h2>Sign up</h2><p class="mute">The Master approves your account. The ship password only confirms your ship.</p>' +
-        '<label>Ship code</label><input id="sShip" autocapitalize="characters" placeholder="Ship code (3 letters)">' +
+        '<label>Ship code</label>' + pickHtml("sShip", st.cfg && st.cfg.ships, "Ship code (3 letters)") +
         '<label>Ship password</label><input id="sPin" type="password" autocomplete="off">' +
-        '<label>Rank</label><input id="sRank" placeholder="e.g. C/O, 2/E, AB">' +
+        '<label>Rank</label>' + pickHtml("sRank", st.cfg && st.cfg.ranks, "e.g. C/O, 2/E, AB") +
         '<label>Name (English, as in your passport)</label><input id="sName" autocapitalize="characters">' +
         '<label>User ID (4-20 letters or numbers)</label><input id="sId" autocomplete="username" autocapitalize="none">' +
         '<label>Password (8 characters or more)</label><input id="sPw" type="password" autocomplete="new-password">' +
@@ -157,11 +166,12 @@ table.t th{background:#f0f2f5;font-weight:600}
         '<div class="links"><a href="#" id="aBack">Back to log in</a></div></div>');
       on("bSign", doSignup); on("aBack", function () { vLogin(); });
     };
-    if (st.cfg) return draw();
-    api("u.config", {}, 20000).then(function (c) { st.cfg = c; }, function () { }).then(draw);
+    withCfg(draw);
   }
   function doSignup() {
     if (val("sPw") !== val("sPw2")) return msg("The two passwords are different.");
+    if (!val("sShip").trim()) return msg("Choose your ship.");
+    if (!val("sRank").trim()) return msg("Choose your rank.");
     if (!$("#sAgree").checked) return msg("Consent is required to use Vega Dipper.");
     var id = val("sId").trim().toLowerCase();
     run(api("u.signup", { ship: val("sShip").trim().toUpperCase(), pin: val("sPin").trim(), rank: val("sRank").trim(), name: val("sName").trim(), id: id, pw: val("sPw"), consent: true, device: device() })
@@ -192,9 +202,12 @@ table.t th{background:#f0f2f5;font-weight:600}
     on("bOut", logout);
   }
   function vOff() {
+    withCfg(drawOff);
+  }
+  function drawOff() {
     var me = st.me || {};
     show('<div class="card"><h2>No ship on board</h2><p>' + esc(me.name) + ' (' + esc(me.rank) + ')</p><p class="mute">Your account is kept after sign-off. To join a ship, enter its code and ship password. The Master of that ship approves you.</p>' +
-      '<label>Ship code</label><input id="jShip" autocapitalize="characters">' +
+      '<label>Ship code</label>' + pickHtml("jShip", st.cfg && st.cfg.ships, "Ship code (3 letters)") +
       '<label>Ship password</label><input id="jPin" type="password" autocomplete="off">' +
       '<button class="btn" id="bJoin">Request to join</button><button class="btn g" id="bOut">Log out</button><div id="msg" class="hide"></div></div>');
     on("bOut", logout);
@@ -248,7 +261,7 @@ table.t th{background:#f0f2f5;font-weight:600}
     var office = !!(st.me && st.me.status === "office"), grant = office ? ["officer", "ce", "master"] : ["officer", "ce"];
     var note = "", list = [];
     var roleBoxes = function (x, checked) {
-      return grant.map(function (r) { return '<label style="margin-right:10px;white-space:nowrap;font-size:13px"><input type="checkbox" data-ua-role="' + esc(x.id) + '" value="' + r + '"' + (checked && x.roles.indexOf(r) >= 0 ? " checked" : "") + '> ' + ROLE_KO[r] + '</label>'; }).join("");
+      return grant.map(function (r) { return '<label style="display:inline-flex;align-items:center;gap:4px;margin:0 12px 4px 0;white-space:nowrap;font-size:13px;color:inherit"><input type="checkbox" style="width:auto;margin:0" data-ua-role="' + esc(x.id) + '" value="' + r + '"' + (checked && x.roles.indexOf(r) >= 0 ? " checked" : "") + '> ' + ROLE_KO[r] + '</label>'; }).join("");
     };
     var chips = function (x) { return (x.roles || []).map(function (r) { return '<span class="chip">' + esc(ROLE_KO[r] || r) + '</span>'; }).join(""); };
     var draw = function () {
