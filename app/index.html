@@ -146,7 +146,7 @@ table.t th{background:#f0f2f5;font-weight:600}
   function vSignup() {
     var draw = function () {
       show('<div class="card"><h2>Sign up</h2><p class="mute">The Master approves your account. The ship password only confirms your ship.</p>' +
-        '<label>Ship code</label><input id="sShip" autocapitalize="characters" placeholder="e.g. SLE">' +
+        '<label>Ship code</label><input id="sShip" autocapitalize="characters" placeholder="Ship code (3 letters)">' +
         '<label>Ship password</label><input id="sPin" type="password" autocomplete="off">' +
         '<label>Rank</label><input id="sRank" placeholder="e.g. C/O, 2/E, AB">' +
         '<label>Name (English, as in your passport)</label><input id="sName" autocapitalize="characters">' +
@@ -220,10 +220,20 @@ table.t th{background:#f0f2f5;font-weight:600}
     document.querySelector("main").classList.add("wide");
     show('<div class="card"><h2>' + esc(me.name || me.id) + '</h2><p class="mute">작업 전 결재와 기록 열람은 다음 판에 이 앱으로 옮깁니다. 그때까지는 감독 화면을 씁니다.</p>' +
       '<a class="btn" style="display:block;text-align:center;text-decoration:none" href="../">감독 화면 열기</a><button class="btn g" id="bOut">Log out</button></div>' +
+      '<div class="card"><h2>결재함</h2><div id="inbox"></div></div>' +
       '<div class="card"><h2>계정 관리</h2><label>호선</label><select id="oShip" style="font:inherit;padding:7px;border:1px solid var(--line);border-radius:5px">' +
       ships.map(function (s) { return '<option>' + esc(s) + '</option>'; }).join("") + '</select><div id="accUI" style="margin-top:12px"></div></div>');
     on("bOut", logout);
-    var load = function () { accountsUI($("#accUI"), { ship: $("#oShip").value }); };
+    /* 작업 전 결재는 옛 감독 화면에서 (5단계에 옮김). 계정 승인 & 잠긴 계정은 아래 계정 관리의 그 호선으로 */
+    inboxUI($("#inbox"), {
+      onOpen: function (x) {
+        if (x.kind === "decide") { window.open("../", "_blank"); return; }
+        if (x.ship && ships.indexOf(x.ship) >= 0) { $("#oShip").value = x.ship; load(); }
+        $("#accUI").scrollIntoView();
+      },
+      open: function (x) { return x.kind === "decide" || x.kind === "account" || x.kind === "locked"; }
+    });
+    var load = function () { accountsUI($("#accUI"), { ship: $("#oShip").value, onChange: function () { var ib = $("#inbox"); if (ib && ib.vdReload) ib.vdReload(); } }); };
     $("#oShip").onchange = load;
     if (ships.length) load(); else $("#accUI").innerHTML = '<p class="mute">담당선이 없습니다.</p>';
   }
@@ -304,6 +314,57 @@ table.t th{background:#f0f2f5;font-weight:600}
     el.innerHTML = '<p class="mute">불러오는 중...</p>';
     return load();
   }
+  /* ================= 결재함 (내가 할 것) =================
+   * 본선 화면(첫 탭)과 사무실 첫 화면이 같이 쓴다. 목록은 서버 u.inbox 가 계정 권한대로 만든다.
+   * opt : onOpen(항목) - 없으면 그 종류는 「열기」 단추 없음, open(항목) -> 이 기기에서 열 수 있는지, onCount(개수) */
+  var INBOX_KO = { sign: "서명", assign: "AO 지정", decide: "작업 전 결재", account: "계정 승인", locked: "잠긴 계정" };
+  function inboxUI(el, opt) {
+    opt = opt || {};
+    if (!el) return Promise.resolve();
+    var items = null, err = "", when = "";
+    var line = function (x, i) {
+      var what = x.kind === "account" || x.kind === "locked" ? esc(x.name) + (x.rank ? " (" + esc(x.rank) + ")" : "") : esc(x.title || x.id) + (x.label ? ' <b>' + esc(x.label) + '</b>' : "");
+      var can = opt.onOpen && (!opt.open || opt.open(x));
+      return '<tr><td><span class="chip">' + esc(INBOX_KO[x.kind] || x.kind) + '</span></td><td>' + esc(x.ship || "") + '</td><td>' + esc(String(x.date || "").slice(0, 10)) + '</td><td>' + what +
+        (x.kind === "decide" && x.deadline ? '<div style="font-size:12px;opacity:.7">기한 ' + esc(x.deadline) + '</div>' : "") + '</td><td>' +
+        (can ? '<button class="btn s" data-ib="' + i + '" style="margin:0;padding:4px 10px">열기</button>' : "") + '</td></tr>';
+    };
+    var draw = function () {
+      var h = "";
+      if (err) h += '<div class="note bad">' + esc(err) + '</div>';
+      if (items === null) h += err ? "" : '<p style="opacity:.7">읽는 중...</p>';
+      else if (!items.length) h += '<p style="opacity:.7">할 것이 없습니다.</p>';
+      else h += '<table class="t" style="width:100%"><tr><th>할 것</th><th>호선</th><th>작업일</th><th>내용</th><th></th></tr>' + items.map(line).join("") + '</table>';
+      h += '<p style="font-size:12px;opacity:.7;margin-top:6px">' + (when ? esc(when.replace("T", " ").slice(0, 16)) + " 기준 " : "") + '<button class="btn s g" data-ib="r" style="margin:0 0 0 6px;padding:3px 10px">새로 읽기</button></p>';
+      el.innerHTML = h;
+    };
+    var load = function () {
+      return api("u.inbox", {}).then(function (r) {
+        items = r.items || []; err = ""; when = r.time || "";
+        var ord = { sign: 0, assign: 1, decide: 2, account: 3, locked: 4 };
+        items.sort(function (a, b) { return (ord[a.kind] - ord[b.kind]) || String(a.date || "").localeCompare(String(b.date || "")); });
+        if (opt.onCount) opt.onCount(items.length);
+        draw();
+      }, function (e) {
+        var m = String(e && e.message || e);
+        if (/^(LOGIN|PWCHANGE)$/.test(m)) { location.replace(location.pathname); return; }
+        err = netErr(e) ? "인터넷이 연결되면 결재함을 읽습니다." : m; draw();
+      });
+    };
+    el.onclick = function (ev) {
+      var b = ev.target.closest && ev.target.closest("[data-ib]");
+      if (!b) return;
+      ev.preventDefault();
+      var k = b.getAttribute("data-ib");
+      if (k === "r") { load(); return; }
+      var x = items && items[+k];
+      if (x && opt.onOpen) opt.onOpen(x);
+    };
+    el.vdReload = load;
+    draw();
+    return load();
+  }
+
   function vError(t, retry) {
     show('<div class="card"><h2>Cannot start</h2><div class="msg bad">' + esc(t) + '</div>' + (retry ? '<button class="btn" id="bRetry">Try again</button>' : '') + '<button class="btn g" id="bOut">Log out</button></div>');
     on("bRetry", function () { run(route()); });
@@ -354,7 +415,7 @@ table.t th{background:#f0f2f5;font-weight:600}
   function start(html) {
     window.VD = {
       s: st.s, me: st.me, api: function (op, data) { return api(op, data); },
-      pushOn: pushOn, logout: logout, accountsUI: accountsUI,
+      pushOn: pushOn, logout: logout, accountsUI: accountsUI, inboxUI: inboxUI,
       expired: function () { location.replace(location.pathname); }   // 다시 열면 u.me 가 LOGIN 이면 로그인 화면, PWCHANGE 면 바꾸기 화면
     };
     document.open();
