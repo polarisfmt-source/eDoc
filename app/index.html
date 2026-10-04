@@ -121,8 +121,10 @@ table.t th{background:#f0f2f5;font-weight:600}
       '<label>Password</label><input id="lpw" type="password" autocomplete="current-password">' +
       '<button class="btn" id="bLogin">Log in</button><div id="msg" class="hide"></div>' +
       '<div class="links"><a href="#" id="aSignup">New crew : Sign up</a><a href="#" id="aOffice">Office staff</a></div></div>' +
-      '<p class="mute">Forgot your password? Ask the Master to reset it.</p>');
+      '<p class="mute">Forgot your password? Ask the Master to reset it.</p>' +
+      (alts().length ? '<div class="card"><h2>Test accounts on this device</h2><p class="mute">Tap to switch without the password.</p>' + alts().map(function (x) { return '<button class="btn" data-alt="' + esc(x.id) + '" style="margin:3px">' + esc(x.rank + " " + x.name + " (" + x.id + ")") + '</button>'; }).join("") + '</div>' : ''));
     on("bLogin", doLogin); on("aSignup", vSignup); on("aOffice", vOffice);
+    Array.prototype.forEach.call(document.querySelectorAll("[data-alt]"), function (b) { b.onclick = function () { altSwitch(b.getAttribute("data-alt")); }; });
     $("#lpw").onkeydown = function (e) { if (e.key === "Enter") doLogin(); };
   }
   function doLogin() {
@@ -130,6 +132,7 @@ table.t th{background:#f0f2f5;font-weight:600}
     if (!id || !pw) return msg("Enter your user ID and password.");
     run(api("u.login", { id: id, pw: pw, device: device() }).then(function (r) {
       setSession(r.s, r.me);
+      altPut(r.s, r.me);
       return route();
     }));
   }
@@ -384,6 +387,19 @@ table.t th{background:#f0f2f5;font-weight:600}
     on("bOut", logout);
   }
 
+  /* ================= 시험 계정 빠른 전환 (감독 10-05) - 임시 기능, 정식 운영 전 삭제 (감독 10-05 지시) =================
+   * 아이디가 tst 로 시작하는 계정만. 로그인한 접속 키를 이 기기에 모아 두고 비밀번호 없이 바꾼다.
+   * 바꿀 때 서버 로그아웃을 하지 않으므로 다른 시험 계정의 접속은 살아 있다. 서버 규칙(지정, 자격)은 그대로 */
+  var LS_ALT = "vd.alt";
+  function isTest(id) { return /^tst/i.test(String(id || "")); }
+  function alts() { try { return JSON.parse(lsGet(LS_ALT) || "[]") || []; } catch (e) { return []; } }
+  function altSave(l) { lsSet(LS_ALT, l.length ? JSON.stringify(l) : ""); }
+  function altPut(s, me) { if (!s || !me || !isTest(me.id)) return; var l = alts().filter(function (x) { return x.id !== me.id; }); l.push({ id: me.id, name: me.name, rank: me.rank, s: s }); altSave(l); }
+  function altDropS(s) { altSave(alts().filter(function (x) { return x.s !== s; })); }
+  function altSwitch(id) { var x = alts().filter(function (a) { return a.id === id; })[0]; if (!x) return; setSession(x.s, null); location.replace(location.pathname); }
+  function altAdd() { setSession("", null); location.replace(location.pathname); }
+  function altList() { return alts().map(function (x) { return { id: x.id, name: x.name, rank: x.rank, cur: x.s === st.s }; }); }
+
   /* ================= 흐름 ================= */
   function setSession(s, me) { st.s = s || ""; st.me = me || null; lsSet(LS_S, st.s); lsSet(LS_ME, me ? JSON.stringify(me) : ""); }
   function refresh() { return api("u.me", {}, 20000).then(function (me) { setSession(st.s, me); return me; }); }
@@ -391,7 +407,7 @@ table.t th{background:#f0f2f5;font-weight:600}
     var s = st.s;
     var off = pushEndpoint().then(function (ep) { return ep && s ? api("u.pushOff", { s: s, endpoint: ep }, 8000).catch(function () { }) : null; });
     return off.then(function () { return s ? api("u.logout", { s: s }, 8000).catch(function () { }) : null; })
-      .then(function () { setSession("", null); location.replace(location.pathname); });
+      .then(function () { altDropS(s); setSession("", null); location.replace(location.pathname); });
   }
 
   /* 접속 키가 있으면 계정 상태를 새로 읽는다. 끊겼으면 전에 받은 계정과 묶음으로 오프라인 시작 */
@@ -399,7 +415,7 @@ table.t th{background:#f0f2f5;font-weight:600}
     if (!st.s) { vLogin(); return Promise.resolve(); }
     return refresh().then(next, function (e) {
       var m = String(e && e.message || e);
-      if (m === "LOGIN") { setSession("", null); vLogin("Your session has ended. Log in again."); return; }
+      if (m === "LOGIN") { altDropS(st.s); setSession("", null); vLogin("Your session has ended. Log in again."); return; }
       if (netErr(e) && st.me) return next(st.me, true);
       vError(errText(e), true);
     });
@@ -429,6 +445,7 @@ table.t th{background:#f0f2f5;font-weight:600}
     window.VD = {
       s: st.s, me: st.me, api: function (op, data) { return api(op, data); },
       pushOn: pushOn, logout: logout, accountsUI: accountsUI, inboxUI: inboxUI,
+      isTest: isTest, altList: altList, altSwitch: altSwitch, altAdd: altAdd,
       expired: function () { location.replace(location.pathname); }   // 다시 열면 u.me 가 LOGIN 이면 로그인 화면, PWCHANGE 면 바꾸기 화면
     };
     document.open();
